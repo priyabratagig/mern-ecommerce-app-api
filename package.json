@@ -1,0 +1,26 @@
+{
+  "name": "mern-ecommerce-app-api",
+  "version": "1.0.0",
+  "description": "Personal project using mongodb, express, react and node; a online prototype shopping website part II",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/priyabratagig/mern-ecommerce-app-api.git"
+  },
+  "scripts": {
+    "test": "cross-env NODE_ENV=test node index.cjs",
+    "dev": "cross-env NODE_ENV=development nodemon index.cjs",
+    "start": "nodemon index.cjs",
+    "prod": "cross-env NODE_ENV=production node index.cjs"
+  },
+  "author": "Priyabrata Chattaraj",
+  "license": "MIT License",
+  "dependencies": {
+    "cross-env": "^7.0.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "ip": "^2.0.1",
+    "mongoose": "^8.2.0",
+    "nodemon": "^3.1.0"
+  }
+}
