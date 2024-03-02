@@ -1,4 +1,4 @@
-const { MONGODB_URI, MONGODB_CLUSTER, MONGODB_PORT, MONGODB_DBNAMNE, SERVER_PORT, SEVER_IP } = require('./configs.cjs')
+const { MONGODB_URI, MONGODB_CLUSTER, MONGODB_PORT, MONGODB_DBNAMNE, SERVER_PORT, SEVER_IP, API_VERSION } = require('./configs.cjs')
 const express = require('express')
 const app = express()
 const mongoose = require('mongoose')
