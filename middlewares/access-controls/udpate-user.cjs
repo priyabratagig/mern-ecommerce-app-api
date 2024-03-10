@@ -5,7 +5,7 @@ const user_id_provided = ({ body: { userid } }) => {
 }
 
 const only_update_user_exists = async (userid) => {
-    const user = await UserUtils.user_exists({ userid }).catch(err => { throw LogicError({ status: 400, message: "User does not exist" }) })
+    const user = await UserUtils.user_exists({ userid }).catch(err => { throw new LogicError({ status: 400, message: "User does not exist" }) })
 
     return user
 }
@@ -26,12 +26,13 @@ const only_admin_or_superadmin_can_make_admin = ({ loggedInUser, user, body }) =
     if (body.isadmin && !user.isadmin && !(loggedInUser.isadmin || loggedInUser.issuperadmin)) throw new LogicError({ status: 400, message: "Only existing admin or superadmin can make new admin" })
 }
 
-const only_organization_can_make_superadmin = ({ loggedInUser, user, body }) => {
-    if (body.issuperadmin && !user.issuperadmin) throw new LogicError({ status: 400, message: "Only organization authorities can make superadmin" })
+const only_organization_can_update_superadmin = ({ loggedInUser, user, body }) => {
+    if (user.issuperadmin && !body.issuperadmin) throw new LogicError({ status: 400, message: "Only organization authorities can make superadmin" })
 }
 
 const only_superadmin_can_revoke_or_update_admin_accesses = ({ loggedInUser, user, body }) => {
     if (loggedInUser.issuperadmin) return true
+    if (user.isadmin === body.isadmin && !body.hasOwnProperty('adminaccess')) return true
 
     switch (true) {
         case user.isadmin && !body.isadmin:
@@ -47,9 +48,9 @@ const only_superadmin_can_revoke_or_update_admin_accesses = ({ loggedInUser, use
 const update_user = async (req, res, next) => {
     try {
         user_id_provided(req)
-        const userid = UserUtils.id_decrypt(req.params.userid)
-
+        const userid = UserUtils.id_decrypt(req.body.userid)
         const user = await only_update_user_exists(userid)
+
         const args = {
             loggedInUser: req.loggedinuser,
             user,
@@ -61,16 +62,16 @@ const update_user = async (req, res, next) => {
                 none_can_update_other_username_or_password(args)
                 only_higher_level_can_update_lower_level(args)
                 only_admin_or_superadmin_can_make_admin(args)
-                only_organization_can_make_superadmin(args)
+                only_organization_can_update_superadmin(args)
                 only_superadmin_can_revoke_or_update_admin_accesses(args)
         }
 
+        const { _id, __v, createdAt, updatedAt, ...userInfo } = user._doc
         req.body.userid = userid
-        req.body.user = user
+        req.body.user = userInfo
         return next()
     }
     catch (err) {
-        console.log('my errir')
         console.error(err.message)
         if (err.status) return res.status(err.status).json(err.message)
         return res.status(500).json(err)

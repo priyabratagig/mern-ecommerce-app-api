@@ -90,7 +90,7 @@ class UserUtils {
             expiresIn: process.env.TOKEN_EXPIRY
         })
 
-        this.res.cookie("access_token", access_token, { signed: true, maxAge: process.env.COOKIE_EXPIRY })
+        return this.res.cookie("access_token", access_token, { signed: true, maxAge: process.env.COOKIE_EXPIRY })
     }
 
     get_access_token() {
@@ -125,7 +125,11 @@ class UserUtils {
             expiresIn: "5m"
         })
 
-        this.res.cookie('password_reset', reset_password_token, { signed: true })
+        return this.res.cookie('password_reset', reset_password_token, { signed: true })
+    }
+
+    delete_access_token() {
+        return this.res.clearCookie("access_token")
     }
 
     get_reset_token() {
@@ -142,8 +146,8 @@ class UserUtils {
         })
     }
 
-    clear_reset_token() {
-        this.res.clearCookie('password_reset')
+    delete_reset_token() {
+        return this.res.clearCookie('password_reset')
     }
 }
 

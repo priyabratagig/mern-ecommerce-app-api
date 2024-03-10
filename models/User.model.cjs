@@ -46,6 +46,7 @@ UserSchema.virtual('originalpassword').set(function (password) {
     this.password = CryptoJS.AES.encrypt(password, process.env.PASSWORD_SECRET).toString()
 })
 
+
 UserSchema.pre('validate', function (next) {
     if (this.issuperadmin) {
         this.isadmin = true
@@ -55,8 +56,21 @@ UserSchema.pre('validate', function (next) {
         if (this.adminaccess === null) this.adminaccess = AdminAccessSchema
         this.adminaccess.canRead = true
     }
+    if (!this.isadmin) {
+        this.adminaccess = null
+    }
 
     return next()
+})
+
+UserSchema.path('issuperadmin').validate({
+    validator(issuperadmin) {
+        if (issuperadmin && !this.isadmin) return false
+        if (issuperadmin && this.adminaccess === null) return false
+        if (issuperadmin && !(this.adminaccess.canCreate && this.adminaccess.canRead && this.adminaccess.canUpdate && this.adminaccess.canDelete)) return false
+        return true
+    },
+    message: props => `${props.value} is not valid`
 })
 
 UserSchema.path('isadmin').validate({
@@ -71,24 +85,19 @@ UserSchema.path('adminaccess').validate({
     validator(adminaccess) {
         if (this.isadmin && adminaccess === null) return false
         if (adminaccess && adminaccess.canRead === false) return false
+        if (!this.isadmin && adminaccess !== null) return false
         return true
     },
     message: props => `${props.value} is not valid`
 })
 
-UserSchema.path('issuperadmin').validate({
-    validator(issuperadmin) {
-        if (issuperadmin && !this.isadmin) return false
-        if (issuperadmin && this.adminaccess === null) return false
-        if (issuperadmin && !(this.adminaccess.canCreate && this.adminaccess.canRead && this.adminaccess.canUpdate && this.adminaccess.canDelete)) return false
-        return true
-    },
-    message: props => `${props.value} is not valid`
-})
-
-UserSchema.post('save', function (error, doc, next) {
+UserSchema.post(['save', 'findOneAndUpdate'], function (error, doc, next) {
     if (error.name === 'ValidationError') {
         error.message = Object.values(error.errors).map(path => path.message).join('\n')
+        return next(error)
+    }
+    if (error.codeName === 'DuplicateKey') {
+        error.message = `${Object.keys(error.keyPattern).join(', ')} already exists`
         return next(error)
     }
     return next()
@@ -97,22 +106,49 @@ UserSchema.post('save', function (error, doc, next) {
 UserSchema.static('updateUser', async function (userid, attrs) {
     const UserModel = mongoose.model('User')
     const user = await UserModel.findOne({ _id: userid })
-    let { _id, __v, createdAt, updatedAt, ...userDetails } = user._doc
+    let { _id, __v, createdAt, updatedAt, ...userInfo } = user._doc
 
     if (attrs.hasOwnProperty('originalpassword')) {
-        userDetails.originalpassword = attrs.originalpassword
-        delete userDetails.password
+        userInfo.originalpassword = attrs.originalpassword
+        delete userInfo.password
     }
 
     ['firstname', 'lastname', 'username', 'email', 'isadmin', 'adminaccess'].forEach(attr => {
-        if (attrs.hasOwnProperty(attr)) userDetails[attr] = attrs[attr]
+        if (attrs.hasOwnProperty(attr)) userInfo[attr] = attrs[attr]
     })
 
-    const updatedUser = await UserModel(userDetails)
+    //prevalidate
+    if (userInfo.issuperadmin) {
+        userInfo.isadmin = true
+        userInfo.adminaccess = {
+            canCreate: true,
+            canRead: true,
+            canUpdate: true,
+            canDelete: true
+        }
+    }
+    if (userInfo.isadmin) {
+        if (!userInfo.adminaccess) userInfo.adminaccess = {
+            canCreate: false,
+            canRead: true,
+            canUpdate: false,
+            canDelete: false
+        }
+        else {
+            const adminaccess = {}
+            adminaccess.canCreate = Boolean(userInfo.adminaccess.canCreate)
+            adminaccess.canRead = true
+            adminaccess.canUpdate = Boolean(userInfo.adminaccess.canUpdate)
+            adminaccess.canDelete = Boolean(userInfo.adminaccess.canDelete)
+            userInfo.adminaccess = adminaccess
+        }
+    }
+    if (!userInfo.isadmin) userInfo.adminaccess = null
 
-    const { _id: _, __v: __, createdAt: ___, updatedAt: ____, ...updatedUserDetails } = updatedUser._doc
+    let updatedUser = new UserModel(userInfo)
+    const { _id: _, __v: __, createdAt: ___, updatedAt: ____, ...updatedUserInfo } = updatedUser._doc
 
-    return await UserModel.findOneAndUpdate({ _id: userid }, { $set: updatedUserDetails }, { new: true })
+    return await UserModel.findOneAndUpdate({ _id: userid }, { $set: updatedUserInfo }, { new: true })
 })
 
 UserSchema.plugin(uniqueValidator, { message: '{PATH} already exists.' })

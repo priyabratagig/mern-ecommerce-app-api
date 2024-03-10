@@ -1,4 +1,4 @@
-const LogicError = require("../../utils/LogicError.cjs")
+const { LogicError } = require("../../utils")
 
 const only_superadmin_or_admin_can_register_admin_user = ({ loggedInUser, body }) => {
     if (body.isadmin && !(loggedInUser?.isadmin || loggedInUser?.issuperadmin)) throw new LogicError({ status: 400, message: "Only admin or issuperadmin can register admin user" })

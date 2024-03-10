@@ -54,7 +54,9 @@ router.post('/login', async (req, res) => {
 
 //LOGOUT
 router.get('/logout', (req, res) => {
-    res.status(200).clearCookie('access_token').json({ message: "Successfully logged out" })
+    const userUtils = new UserUtils(req, res)
+    userUtils.delete_access_token()
+    return res.status(200).json({ message: "Successfully logged out" })
 })
 
 // FORGOT PASSWORD
@@ -80,7 +82,8 @@ router.post('/forgot-password', async (req, res) => {
         email_should_match(user, email)
 
         userUtils.set_reset_token(user)
-        res.status(200).json({ message: "OTP sent successfully" })
+        return res.status(200).json({ message: "OTP sent successfully" })
+
     }
     catch (err) {
         console.error(err.message)
@@ -121,13 +124,13 @@ router.post('/reset-password', async (req, res) => {
 
         await User.updateUser(user._id, { originalpassword: password })
 
-        userUtils.clear_reset_token()
-        res.status(200).json({ message: "Password changed successfully" })
+        userUtils.delete_reset_token()
+        return res.status(200).json({ message: "Password changed successfully" })
 
     }
     catch (err) {
         console.error(err.message)
-        userUtils.clear_reset_token()
+        userUtils.delete_reset_token()
         if (err.status) return res.status(err.status).json(err.message)
         return res.status(500).json(err.message)
     }

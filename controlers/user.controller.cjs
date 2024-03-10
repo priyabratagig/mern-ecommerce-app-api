@@ -2,9 +2,15 @@ const router = require("express").Router()
 const User = require("../models/User.model.cjs")
 const { LogicError, UserUtils } = require("../utils")
 
+
+const password_update = ({ req, userUtils }) => {
+    if (req.body.user.password !== req.body.password) userUtils.use_original_password()
+}
+
 const all_values_must_be_present = ({ body }) => {
     UserUtils.all_user_attritibutes_provided({ isadmin: null, adminaccess: null, ...body })
     if (!body.adminaccess) return true
+    if (!(body.adminaccess instanceof Object)) throw new LogicError({ status: 400, message: "Missing or invalid attributes adminaccess" })
     if (typeof body.adminaccess.canCreate !== 'boolean') throw new LogicError({ status: 400, message: "Missing or invalid attributes canCreate" })
     if (typeof body.adminaccess.canRead !== 'boolean') throw new LogicError({ status: 400, message: "Missing or invalid attributes canRead" })
     if (typeof body.adminaccess.canUpdate !== 'boolean') throw new LogicError({ status: 400, message: "Missing or invalid attributes canUpdate" })
@@ -13,13 +19,12 @@ const all_values_must_be_present = ({ body }) => {
     return true
 }
 
-
 const cancel_all_same = ({ user, body }) => {
     if (body.firstname !== user.firstname) return 'firstname'
     if (body.lastname !== user.lastname) return 'lastname'
     if (body.username !== user.username) return 'username'
     if (body.email !== user.email) return 'email'
-    if (body.password !== user.password) return 'password'
+    if (body.originalpassword) return 'password'
     if (body.isadmin !== user.isadmin) return 'isadmin'
     if ((!body.adminaccess) !== (!user.adminaccess)) return 'adminaccess'
     if (body.adminaccess?.canCreate !== user.adminaccess?.canCreate) return 'adminaccess.canCreate'
@@ -33,19 +38,20 @@ const cancel_all_same = ({ user, body }) => {
 //UPDATE
 router.put("/update", async (req, res) => {
     try {
+        const userUtils = new UserUtils(req, res)
+        password_update({ req, userUtils })
         const user = req.body.user
         const body = req.body
-        const userUtils = new UserUtils(req, res)
+        const userid = body.userid
 
         all_values_must_be_present({ body })
         cancel_all_same({ body, user })
 
-        const updatedUser = await User.updatedUserOne(new User(UserUtils.build_user_attrs(body)))
+        const updatedUser = await User.updateUser(userid, body)
         const { _id, __v, password: _, adminaccess: __, ...userInfo } = updatedUser._doc
+        if (req.loggedinuser.userid === updatedUser._id) userUtils.set_access_token(updatedUser)
 
-        if (req.loggedinuser.userid !== updatedUser._id) userUtils.set_access_token(updatedUser)
-
-        res.status(200).json({ ...userInfo })
+        return res.status(200).json({ ...userInfo })
 
     } catch (err) {
         console.error(err.message)

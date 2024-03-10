@@ -1,7 +1,7 @@
 const router = require("express").Router()
 
 router.get("/test", (req, res) => {
-    res.send("Hello World")
+    return res.send("Hello World")
 })
 
 module.exports = router
