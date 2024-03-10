@@ -1,8 +1,4 @@
-const { LogicError, UserUtils } = require('../../utils')
-
-const user_id_provided = ({ body: { userid } }) => {
-    if (!userid) throw new LogicError({ status: 400, message: "User ID not provided" })
-}
+const { LogicError, UserUtils, HTTPUtils } = require('../../../utils')
 
 const only_update_user_exists = async (userid) => {
     const user = await UserUtils.user_exists({ userid }).catch(err => { throw new LogicError({ status: 400, message: "User does not exist" }) })
@@ -46,8 +42,10 @@ const only_superadmin_can_revoke_or_update_admin_accesses = ({ loggedInUser, use
 }
 
 const update_user = async (req, res, next) => {
+    const httpUtils = new HTTPUtils(req, res)
     try {
-        user_id_provided(req)
+        UserUtils.user_id_provided(req)
+        const userUtils = new UserUtils(req, res)
         const userid = UserUtils.id_decrypt(req.body.userid)
         const user = await only_update_user_exists(userid)
 
@@ -57,24 +55,19 @@ const update_user = async (req, res, next) => {
             body: { ...req.body, userid }
         }
 
-        switch (true) {
-            case req.url.includes('update'):
-                none_can_update_other_username_or_password(args)
-                only_higher_level_can_update_lower_level(args)
-                only_admin_or_superadmin_can_make_admin(args)
-                only_organization_can_update_superadmin(args)
-                only_superadmin_can_revoke_or_update_admin_accesses(args)
-        }
+        none_can_update_other_username_or_password(args)
+        only_higher_level_can_update_lower_level(args)
+        only_admin_or_superadmin_can_make_admin(args)
+        only_organization_can_update_superadmin(args)
+        only_superadmin_can_revoke_or_update_admin_accesses(args)
 
-        const { _id, __v, createdAt, updatedAt, ...userInfo } = user._doc
-        req.body.userid = userid
-        req.body.user = userInfo
+        userUtils.set_req_user(user)
         return next()
     }
     catch (err) {
         console.error(err.message)
-        if (err.status) return res.status(err.status).json(err.message)
-        return res.status(500).json(err)
+        if (err.status) return httpUtils.send_message(err.status, err.message)
+        return httpUtils.send_message(500, err.message)
     }
 }
 

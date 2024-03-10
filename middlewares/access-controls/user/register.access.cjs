@@ -1,4 +1,4 @@
-const { LogicError } = require("../../utils")
+const { LogicError, HTTPUtils } = require("../../../utils")
 
 const only_superadmin_or_admin_can_register_admin_user = ({ loggedInUser, body }) => {
     if (body.isadmin && !(loggedInUser?.isadmin || loggedInUser?.issuperadmin)) throw new LogicError({ status: 400, message: "Only admin or issuperadmin can register admin user" })
@@ -9,6 +9,7 @@ const only_organization_can_register_superadmin = ({ loggedInUser, body }) => {
 }
 
 const register_user = (req, res, next) => {
+    const httpUtils = new HTTPUtils(req, res)
     try {
         const args = {
             loggedInUser: req.loggedinuser,
@@ -21,8 +22,8 @@ const register_user = (req, res, next) => {
     }
     catch (err) {
         console.error(err.message)
-        if (err.status) return res.status(err.status).json(err.message)
-        return res.status(500).json(err.message)
+        if (err.status) return httpUtils.send_message(err.status, err.message)
+        return httpUtils.send_message(500, err.message)
     }
 }
 

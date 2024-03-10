@@ -1,13 +1,12 @@
-const { API_VERSION } = require('../../configs.cjs')
-const update_user = require('./udpate-user.cjs')
-const register_user = require('./register-user.cjs')
-
-const base_path = `/api/${API_VERSION}`
+const user_access = require('./user')
 
 const access_controls = (req, res, next) => {
-    switch (req.url) {
-        case `${base_path}/auth/register`: return register_user(req, res, next)
-        case `${base_path}/user/update`: return update_user(req, res, next)
+    const url = String(req.url)
+
+    switch (true) {
+        case url.includes('/auth'): return user_access(req, res, next)
+        case url.includes('/user'): return user_access(req, res, next)
+
         default: return next()
     }
 }

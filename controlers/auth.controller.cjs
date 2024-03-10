@@ -1,9 +1,10 @@
 const router = require("express").Router()
 const User = require("../models/User.model.cjs")
-const { LogicError, UserUtils } = require("../utils")
+const { LogicError, UserUtils, HTTPUtils } = require("../utils")
 
 //REGISTER
 router.post("/register", async (req, res) => {
+    const httpUtils = new HTTPUtils(req, res)
     try {
         const userUtils = new UserUtils(req, res)
         userUtils.use_original_password()
@@ -13,12 +14,12 @@ router.post("/register", async (req, res) => {
 
         const savedUser = await newUser.save()
         const { _id, __v, password, adminaccess, ...userInfo } = savedUser._doc
-        return res.status(201).json(userInfo)
 
+        return httpUtils.send_json(200, userInfo)
     } catch (err) {
         console.error(err.message)
-        if (err.status) return res.status(err.status).json(err.message)
-        return res.status(500).json(err.message)
+        if (err.status) return httpUtils.send_message(err.status, err.message)
+        return httpUtils.send_message(500, err.message)
     }
 })
 
@@ -33,6 +34,7 @@ const passs_should_match = (user, password) => {
 }
 
 router.post('/login', async (req, res) => {
+    const httpUtils = new HTTPUtils(req, res)
     try {
         const userUtils = new UserUtils(req, res)
         userUtils.use_original_password()
@@ -43,20 +45,23 @@ router.post('/login', async (req, res) => {
 
         userUtils.set_access_token(user)
         const { _id, __v, password, adminaccess, ...userInfo } = user._doc
-        return res.json(userInfo)
+
+        return httpUtils.send_json(200, { userid: UserUtils.id_encrypt(_id), userInfo })
 
     } catch (err) {
         console.error(err.message)
-        if (err.status) return res.status(err.status).json(err.message)
-        return res.status(500).json(err.message)
+        if (err.status) return httpUtils.send_message(err.status, err.message)
+        return httpUtils.send_message(500, err.message)
     }
 })
 
 //LOGOUT
 router.get('/logout', (req, res) => {
+    const httpUtils = new HTTPUtils(req, res)
     const userUtils = new UserUtils(req, res)
     userUtils.delete_access_token()
-    return res.status(200).json({ message: "Successfully logged out" })
+
+    return httpUtils.send_json(200, "Logged out successfully")
 })
 
 // FORGOT PASSWORD
@@ -71,6 +76,7 @@ const email_should_match = (user, email) => {
 }
 
 router.post('/forgot-password', async (req, res) => {
+    const httpUtils = new HTTPUtils(req, res)
     try {
         const userUtils = new UserUtils(req, res)
         all_forgot_credentials_provided(req.body)
@@ -82,13 +88,13 @@ router.post('/forgot-password', async (req, res) => {
         email_should_match(user, email)
 
         userUtils.set_reset_token(user)
-        return res.status(200).json({ message: "OTP sent successfully" })
 
+        return httpUtils.send_message(200, "OTP sent to your email")
     }
     catch (err) {
         console.error(err.message)
-        if (err.status) return res.status(err.status).json(err.message)
-        return res.status(500).json(err.message)
+        if (err.status) return httpUtils.send_message(err.status, err.message)
+        return httpUtils.send_message(500, err.message)
     }
 })
 
@@ -108,6 +114,7 @@ const otp_should_match = (otp, reset_password_token) => {
 
 // VERIFY OTP
 router.post('/reset-password', async (req, res) => {
+    const httpUtils = new HTTPUtils(req, res)
     const userUtils = new UserUtils(req, res)
     try {
         userUtils.use_original_password()
@@ -125,14 +132,14 @@ router.post('/reset-password', async (req, res) => {
         await User.updateUser(user._id, { originalpassword: password })
 
         userUtils.delete_reset_token()
-        return res.status(200).json({ message: "Password changed successfully" })
+        return httpUtils.send_message(200, "Password changed successfully")
 
     }
     catch (err) {
         console.error(err.message)
         userUtils.delete_reset_token()
-        if (err.status) return res.status(err.status).json(err.message)
-        return res.status(500).json(err.message)
+        if (err.status) return httpUtils.send_message(err.status, err.message)
+        return httpUtils.send_message(500, err.message)
     }
 })
 

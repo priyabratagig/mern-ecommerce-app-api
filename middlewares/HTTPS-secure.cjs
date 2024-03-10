@@ -1,5 +1,8 @@
+const { HTTPUtils } = require("../utils")
+
 const HTTP_secure = (req, res, next) => {
-    if (!req.secure) return res.status(301).send("Access Denied, only HTTPS is allowed")
+    const httpUtils = new HTTPUtils(req, res)
+    if (!req.secure) return httpUtils.send_message(301, "Access Denied, only HTTPS is allowed")
 
     return next()
 }

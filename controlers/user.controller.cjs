@@ -1,13 +1,13 @@
 const router = require("express").Router()
 const User = require("../models/User.model.cjs")
-const { LogicError, UserUtils } = require("../utils")
+const { LogicError, UserUtils, HTTPUtils } = require("../utils")
 
 
 const password_update = ({ req, userUtils }) => {
     if (req.body.user.password !== req.body.password) userUtils.use_original_password()
 }
 
-const all_values_must_be_present = ({ body }) => {
+const all_upadate_values_must_be_present = ({ body }) => {
     UserUtils.all_user_attritibutes_provided({ isadmin: null, adminaccess: null, ...body })
     if (!body.adminaccess) return true
     if (!(body.adminaccess instanceof Object)) throw new LogicError({ status: 400, message: "Missing or invalid attributes adminaccess" })
@@ -37,6 +37,7 @@ const cancel_all_same = ({ user, body }) => {
 
 //UPDATE
 router.put("/update", async (req, res) => {
+    const httpUtils = new HTTPUtils(req, res)
     try {
         const userUtils = new UserUtils(req, res)
         password_update({ req, userUtils })
@@ -44,55 +45,148 @@ router.put("/update", async (req, res) => {
         const body = req.body
         const userid = body.userid
 
-        all_values_must_be_present({ body })
+        all_upadate_values_must_be_present({ body })
         cancel_all_same({ body, user })
 
         const updatedUser = await User.updateUser(userid, body)
         const { _id, __v, password: _, adminaccess: __, ...userInfo } = updatedUser._doc
         if (req.loggedinuser.userid === updatedUser._id) userUtils.set_access_token(updatedUser)
 
-        return res.status(200).json({ ...userInfo })
+        return httpUtils.send_json(200, userInfo)
 
     } catch (err) {
         console.error(err.message)
-        if (err.status) return res.status(err.status).json(err.message)
-        res.status(500).json(err.message)
+        if (err.status) return httpUtils.send_message(err.status, err.message)
+        return httpUtils.send_message(500, err.message)
     }
 })
 
-// //DELETE
-// router.delete("/:id", verifyTokenAndAuthorization, async (req, res) => {
-//     try {
-//         await User.findByIdAndDelete(req.params.id);
-//         res.status(200).json("User has been deleted...");
-//     } catch (err) {
-//         res.status(500).json(err);
-//     }
-// });
+//DELETE
+const all_delete_values_must_be_present = ({ body }) => {
+    ['userid', 'username', 'email'].forEach((val) => {
+        if (!body.hasOwnProperty(val)) throw new LogicError({ status: 400, message: `Missing ${val} attribute` })
+    })
+}
 
-// //GET USER
-// router.get("/find/:id", verifyTokenAndAdmin, async (req, res) => {
-//     try {
-//         const user = await User.findById(req.params.id);
-//         const { password, ...others } = user._doc;
-//         res.status(200).json(others);
-//     } catch (err) {
-//         res.status(500).json(err);
-//     }
-// });
+const username_email_should_match = ({ user, body }) => {
+    ['username', 'email'].forEach((val) => {
+        if (body[val] !== user[val]) throw new LogicError({ status: 400, message: `${val} mismatch` })
+    })
+}
 
-// //GET ALL USER
-// router.get("/", verifyTokenAndAdmin, async (req, res) => {
-//     const query = req.query.new;
-//     try {
-//         const users = query
-//             ? await User.find().sort({ _id: -1 }).limit(5)
-//             : await User.find();
-//         res.status(200).json(users);
-//     } catch (err) {
-//         res.status(500).json(err);
-//     }
-// });
+router.delete("/delete", async (req, res) => {
+    const httpUtils = new HTTPUtils(req, res)
+    try {
+        const userUtils = new UserUtils(req, res)
+        const user = req.body.user
+        const body = req.body
+        const userid = body.userid
+        const loggedInUser = req.loggedinuser
+        const args = {
+            body,
+            user
+        }
+        all_delete_values_must_be_present(args)
+        username_email_should_match(args)
+
+        await User.findByIdAndDelete(userid)
+
+        if (loggedInUser.userid === userid) userUtils.delete_access_token()
+
+        return httpUtils.send_message(200, "User deleted successfully")
+    } catch (err) {
+        console.error(err.message)
+        if (err.status) return httpUtils.send_message(err.status, err.message)
+        return httpUtils.send_message(500, err.message)
+    }
+})
+
+//GET USER
+const user_id_provided = ({ body: { userid } }) => {
+    if (!userid) throw new LogicError({ status: 400, message: "Missing userid" })
+
+    return UserUtils.id_decrypt(userid)
+}
+
+const none_can_view_other = ({ user, loggedInUser }) => {
+    if (String(user._id) !== loggedInUser.userid) throw new LogicError({ status: 400, message: "Unauthorized" })
+}
+
+router.get("/find", async (req, res) => {
+    const httpUtils = new HTTPUtils(req, res)
+    try {
+        const userid = user_id_provided(req)
+        const user = await UserUtils.user_exists({ userid })
+
+        none_can_view_other({ user, loggedInUser: req.loggedinuser })
+
+        const { _id, __v, password, ...userInfo } = user._doc
+        userInfo.userid = UserUtils.id_encrypt(_id)
+
+        return httpUtils.send_json(200, userInfo)
+    } catch (err) {
+        console.error(err.message)
+        if (err.status) return httpUtils.send_message(err.status, err.message)
+        return httpUtils.send_message(500, err.message)
+    }
+})
+
+//GET ALL USER
+const get_query = ({ loggedInUser }) => {
+    if (!loggedInUser.isadmin) throw new LogicError({ status: 403, message: "Unauthorized" })
+
+    if (!loggedInUser.issuperadmin) return { issuperadmin: { $eq: false } }
+
+    return {}
+}
+
+router.get("/find-all", async (req, res) => {
+    const httpUtils = new HTTPUtils(req, res)
+    try {
+        const pageSize = req.body.pagesize || 10
+        const page = req.body.page || 1
+        const loggedInUser = req.loggedinuser
+        const query = get_query({ loggedInUser })
+
+        const skip = pageSize * (page - 1)
+        const limit = pageSize
+
+        const users = await User.aggregate([
+            { $match: query },
+            {
+                $project: {
+                    userid: {
+                        $function: {
+                            body: (function (_id) { return this.id_encrypt(_id) }).bind(UserUtils),
+                            args: ['$_id'],
+                            lang: 'js',
+                        },
+                    },
+                    firstname: 1,
+                    lastname: 1,
+                    username: 1,
+                    email: 1,
+                    isadmin: 1,
+                    adminaccess: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                },
+            },
+            {
+                $facet: {
+                    metadata: [{ $count: 'count' }],
+                    users: [{ $skip: skip }, { $limit: limit }],
+                },
+            },
+        ])
+
+        return httpUtils.send_json(200, users[0])
+    } catch (err) {
+        console.error(err.message)
+        if (err.status) return httpUtils.send_message(err.status, err.message)
+        return httpUtils.send_message(500, err.message)
+    }
+})
 
 // //GET USER STATS
 

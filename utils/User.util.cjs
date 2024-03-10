@@ -10,6 +10,10 @@ class UserUtils {
         this.next = next
     }
 
+    static user_id_provided = ({ body: { userid } }) => {
+        if (!userid) throw new LogicError({ status: 400, message: "User ID not provided" })
+    }
+
     static id_encrypt(id) {
         return CryptoJS.AES.encrypt(String(id), process.env.ID_SECRET).toString()
     }
@@ -148,6 +152,14 @@ class UserUtils {
 
     delete_reset_token() {
         return this.res.clearCookie('password_reset')
+    }
+
+    set_req_user(user) {
+        const { _id, __v, createdAt, updatedAt, ...userInfo } = user._doc
+        this.req.body.userid = String(user._id)
+        this.req.body.user = userInfo
+
+        return this.req
     }
 }
 
