@@ -1,6 +1,7 @@
 const router = require("express").Router()
 const User = require("../models/User.model.cjs")
 const { LogicError, UserUtils, HTTPUtils } = require("../utils")
+const CryptoJS = require("crypto-js")
 
 
 const password_update = ({ req, userUtils }) => {
@@ -151,36 +152,28 @@ router.get("/find-all", async (req, res) => {
         const skip = pageSize * (page - 1)
         const limit = pageSize
 
-        const users = await User.aggregate([
+        const result = await User.aggregate([
             { $match: query },
             {
                 $project: {
-                    userid: {
-                        $function: {
-                            body: (function (_id) { return this.id_encrypt(_id) }).bind(UserUtils),
-                            args: ['$_id'],
-                            lang: 'js',
-                        },
-                    },
-                    firstname: 1,
-                    lastname: 1,
-                    username: 1,
-                    email: 1,
-                    isadmin: 1,
-                    adminaccess: 1,
-                    createdAt: 1,
-                    updatedAt: 1,
+                    __v: 0,
+                    password: 0,
                 },
             },
             {
                 $facet: {
-                    metadata: [{ $count: 'count' }],
+                    metadata: [{ $count: 'total' }],
                     users: [{ $skip: skip }, { $limit: limit }],
                 },
             },
         ])
 
-        return httpUtils.send_json(200, users[0])
+        result[0].users.forEach(user => {
+            user.userid = UserUtils.id_encrypt(user._id)
+            delete user._id
+        })
+
+        return httpUtils.send_json(200, result[0])
     } catch (err) {
         console.error(err.message)
         if (err.status) return httpUtils.send_message(err.status, err.message)
