@@ -30,9 +30,6 @@ build/
 .env.test.local
 .env.production.local
 
-# VS Code configuration
-.vscode/
-
 # macOS
 .DS_Store
 
