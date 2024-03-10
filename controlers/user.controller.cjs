@@ -181,31 +181,41 @@ router.get("/find-all", async (req, res) => {
     }
 })
 
-// //GET USER STATS
+//GET USER STATS
+router.get("/stats", async (req, res) => {
+    const httpUtils = new HTTPUtils(req, res)
+    try {
+        const query = get_query({ loggedInUser: req.loggedinuser })
 
-// router.get("/stats", verifyTokenAndAdmin, async (req, res) => {
-//     const date = new Date();
-//     const lastYear = new Date(date.setFullYear(date.getFullYear() - 1));
+        const date = new Date()
+        const lastYear = new Date(date.setFullYear(date.getFullYear() - 1))
 
-//     try {
-//         const data = await User.aggregate([
-//             { $match: { createdAt: { $gte: lastYear } } },
-//             {
-//                 $project: {
-//                     month: { $month: "$createdAt" },
-//                 },
-//             },
-//             {
-//                 $group: {
-//                     _id: "$month",
-//                     total: { $sum: 1 },
-//                 },
-//             },
-//         ]);
-//         res.status(200).json(data)
-//     } catch (err) {
-//         res.status(500).json(err);
-//     }
-// });
+        query.createdAt = { $gte: lastYear }
 
-module.exports = router;
+        const result = await User.aggregate([
+            { $match: query },
+            {
+                $project: {
+                    month: { $month: "$createdAt" },
+                },
+            },
+            {
+                $group: {
+                    _id: "$month",
+                    total: { $sum: 1 },
+                },
+            }
+        ])
+
+        result[0].users = result[0]._id
+        delete result[0]._id
+
+        return httpUtils.send_json(200, result[0])
+    } catch (err) {
+        console.error(err.message)
+        if (err.status) return httpUtils.send_message(err.status, err.message)
+        return httpUtils.send_message(500, err.message)
+    }
+})
+
+module.exports = router
