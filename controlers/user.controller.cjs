@@ -166,6 +166,11 @@ router.get("/find-all", async (req, res) => {
                     users: [{ $skip: skip }, { $limit: limit }],
                 },
             },
+            {
+                $addFields: {
+                    'metadata.count': { $size: '$users' },
+                },
+            },
         ])
 
         result[0].users.forEach(user => {
