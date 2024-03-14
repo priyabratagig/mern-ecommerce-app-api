@@ -21,10 +21,11 @@ const authenticate = async (req, res, next) => {
         const token = userUtils.get_access_token()
 
         const user = await UserUtils.user_exists({ userid: token.userid })
-        req.loggedinuser = token
+        const { _id, __v, ...userInfo } = user._doc
+        userInfo.userid = String(_id)
+        token.user = userInfo
 
         return next()
-
     } catch (err) {
         if (String(req.url).includes('/auth')) return next()
 

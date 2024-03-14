@@ -22,16 +22,17 @@ const only_organization_can_delete_superadmin = ({ loggedInUser, user, body }) =
     if (user.issuperadmin) throw new LogicError({ status: 403, message: "Only organization authorities can delete superadmin" })
 }
 
-const delete_user = async (req, res, next) => {
+const delete_user_access = async (req, res, next) => {
     const httpUtils = new HTTPUtils(req, res)
     try {
         UserUtils.user_id_provided(req)
         const userUtils = new UserUtils(req, res)
+        const loggedInUser = req.loggedinuser
         const userid = UserUtils.id_decrypt(req.body.userid)
-        const user = await only_delete_user_exists(userid)
+        const user = loggedInUser.userid === userid ? req.loggedinuser.user : await only_delete_user_exists(userid)
 
         const args = {
-            loggedInUser: req.loggedinuser,
+            loggedInUser,
             user,
             body: { ...req.body, userid }
         }
@@ -51,4 +52,4 @@ const delete_user = async (req, res, next) => {
     }
 }
 
-module.exports = delete_user 
+module.exports = delete_user_access

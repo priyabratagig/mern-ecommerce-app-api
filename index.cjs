@@ -13,6 +13,7 @@ const access_controls = require('./middlewares/access-controls')
 
 const auth = require('./controlers/auth.controller.cjs')
 const user = require('./controlers/user.controller.cjs')
+const product = require('./controlers/product.controller.cjs')
 
 const app = express()
 app.use(cookie_parser(process.env.COOKIE_SECRET, { httpOnly: true, secure: true, signed: true }))
@@ -23,6 +24,7 @@ app.use(authenticate)
 app.use(access_controls)
 app.use(`/api/${API_VERSION}/auth`, auth)
 app.use(`/api/${API_VERSION}/user`, user)
+app.use(`/api/${API_VERSION}/product`, product)
 
 try {
     const sslServer = https.createServer({

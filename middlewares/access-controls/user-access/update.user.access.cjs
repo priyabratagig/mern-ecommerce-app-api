@@ -41,14 +41,13 @@ const only_superadmin_can_revoke_or_update_admin_accesses = ({ loggedInUser, use
     }
 }
 
-const update_user = async (req, res, next) => {
+const update_user_access = async (req, res, next) => {
     const httpUtils = new HTTPUtils(req, res)
     try {
         UserUtils.user_id_provided(req)
         const userUtils = new UserUtils(req, res)
         const userid = UserUtils.id_decrypt(req.body.userid)
-        const user = await only_update_user_exists(userid)
-
+        const user = loggedInUser.userid === userid ? req.loggedinuser.user : await only_update_user_exists(userid)
         const args = {
             loggedInUser: req.loggedinuser,
             user,
@@ -71,4 +70,4 @@ const update_user = async (req, res, next) => {
     }
 }
 
-module.exports = update_user
+module.exports = update_user_access

@@ -8,7 +8,7 @@ const only_organization_can_register_superadmin = ({ loggedInUser, body }) => {
     if (body.issuperadmin) throw new LogicError({ status: 400, message: "Only organization authorities can register superadmin" })
 }
 
-const register_user = (req, res, next) => {
+const create_user_access = (req, res, next) => {
     const httpUtils = new HTTPUtils(req, res)
     try {
         const args = {
@@ -27,4 +27,4 @@ const register_user = (req, res, next) => {
     }
 }
 
-module.exports = register_user
+module.exports = create_user_access

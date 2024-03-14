@@ -46,7 +46,6 @@ UserSchema.virtual('originalpassword').set(function (password) {
     this.password = CryptoJS.AES.encrypt(password, process.env.PASSWORD_SECRET).toString()
 })
 
-
 UserSchema.pre('validate', function (next) {
     if (this.issuperadmin) {
         this.isadmin = true

@@ -1,9 +1,8 @@
 const router = require("express").Router()
 const User = require("../models/User.model.cjs")
 const { LogicError, UserUtils, HTTPUtils } = require("../utils")
-const CryptoJS = require("crypto-js")
 
-
+//UPDATE
 const password_update = ({ req, userUtils }) => {
     if (req.body.user.password !== req.body.password) userUtils.use_original_password()
 }
@@ -36,7 +35,6 @@ const cancel_all_same = ({ user, body }) => {
     throw new LogicError({ status: 200, message: "Nothing to update" })
 }
 
-//UPDATE
 router.put("/update", async (req, res) => {
     const httpUtils = new HTTPUtils(req, res)
     try {
@@ -103,28 +101,13 @@ router.delete("/delete", async (req, res) => {
 })
 
 //GET USER
-const user_id_provided = ({ body: { userid } }) => {
-    if (!userid) throw new LogicError({ status: 400, message: "Missing userid" })
-
-    return UserUtils.id_decrypt(userid)
-}
-
-const none_can_view_other = ({ user, loggedInUser }) => {
-    if (String(user._id) !== loggedInUser.userid) throw new LogicError({ status: 400, message: "Unauthorized" })
-}
-
-router.get("/find", async (req, res) => {
+router.get("/get", async (req, res) => {
     const httpUtils = new HTTPUtils(req, res)
     try {
-        const userid = user_id_provided(req)
-        const user = await UserUtils.user_exists({ userid })
+        const user = req.loggedinuser.user
+        user.userid = UserUtils.id_encrypt(user.userid)
 
-        none_can_view_other({ user, loggedInUser: req.loggedinuser })
-
-        const { _id, __v, password, ...userInfo } = user._doc
-        userInfo.userid = UserUtils.id_encrypt(_id)
-
-        return httpUtils.send_json(200, userInfo)
+        return httpUtils.send_json(200, user)
     } catch (err) {
         console.error(err.message)
         if (err.status) return httpUtils.send_message(err.status, err.message)
@@ -133,27 +116,18 @@ router.get("/find", async (req, res) => {
 })
 
 //GET ALL USER
-const get_query = ({ loggedInUser }) => {
-    if (!loggedInUser.isadmin) throw new LogicError({ status: 403, message: "Unauthorized" })
-
-    if (!loggedInUser.issuperadmin) return { issuperadmin: { $eq: false } }
-
-    return {}
-}
-
-router.get("/find-all", async (req, res) => {
+router.get("/get-all", async (req, res) => {
     const httpUtils = new HTTPUtils(req, res)
     try {
+        const query = req.body.query
         const pageSize = req.body.pagesize || 10
         const page = req.body.page || 1
-        const loggedInUser = req.loggedinuser
-        const query = get_query({ loggedInUser })
 
         const skip = pageSize * (page - 1)
         const limit = pageSize
 
         const result = await User.aggregate([
-            { $match: query },
+            query,
             {
                 $project: {
                     __v: 0,
@@ -190,15 +164,13 @@ router.get("/find-all", async (req, res) => {
 router.get("/stats", async (req, res) => {
     const httpUtils = new HTTPUtils(req, res)
     try {
-        const query = get_query({ loggedInUser: req.loggedinuser })
+        const query = req.body.query
 
         const date = new Date()
         const lastYear = new Date(date.setFullYear(date.getFullYear() - 1))
 
-        query.createdAt = { $gte: lastYear }
-
         const result = await User.aggregate([
-            { $match: query },
+            query,
             {
                 $project: {
                     month: { $month: "$createdAt" },
