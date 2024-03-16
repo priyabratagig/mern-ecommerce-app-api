@@ -1,7 +1,7 @@
 const { LogicError, HTTPUtils, ProductUtils } = require("../../../utils")
 
 const only_admin_with_delete_access_or_superadmin_can_add_product = ({ loggedInUser }) => {
-    if (!loggedInUser.issuperadmin && !(loggedInUser.isadmin && !loggedInUser.adminaccess?.canDelete)) throw new LogicError(403, "You are not allowed to delete product")
+    if (!loggedInUser.issuperadmin && (!loggedInUser.isadmin || !loggedInUser.adminaccess?.canDelete)) throw new LogicError({ status: 403, message: "You are not allowed to delete product" })
 }
 
 const delete_product_access = async (req, res, next) => {
@@ -9,7 +9,7 @@ const delete_product_access = async (req, res, next) => {
     try {
         const args = {
             loggedInUser: req.loggedinuser,
-            params: req.body
+            productid: req.body.productid,
         }
 
         only_admin_with_delete_access_or_superadmin_can_add_product(args)

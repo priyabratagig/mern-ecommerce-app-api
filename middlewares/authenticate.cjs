@@ -12,6 +12,14 @@ const logged_in_user_exists = async ({ body }) => {
     return user
 }
 
+const AUTHENTICATION_IGNORED_ROUTES = [
+    /\/auth/,
+    /\/products\/get\/[A-za-z0-9]+\/[A-za-z0-9]+/,
+    /\/products\/get-by-categories\/[A-za-z\+]+/,
+    /\/products\/get-all/,
+    /\/products\/search/
+]
+
 const authenticate = async (req, res, next) => {
     const httpUtils = new HTTPUtils(req, res)
     try {
@@ -25,9 +33,12 @@ const authenticate = async (req, res, next) => {
         userInfo.userid = String(_id)
         token.user = userInfo
 
+        req.loggedinuser = token
+
         return next()
     } catch (err) {
-        if (String(req.url).includes('/auth')) return next()
+        const ignore_authentication = AUTHENTICATION_IGNORED_ROUTES.some(route => route.test(req.url))
+        if (ignore_authentication) return next()
 
         console.error(err.message)
         if (err.status) return httpUtils.send_message(err.status, err.message)

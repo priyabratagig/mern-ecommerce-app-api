@@ -9,9 +9,9 @@ const product_access = async (req, res, next) => {
     switch (true) {
         case url.includes('/add'): return create_product_access(req, res, next)
         case url.includes('/update'): return update_product_access(req, res, next)
-        case url.includes('/delete'): return delete_product_access(req, res, next)
-        case url.includes('/get-all'): return read_product_access(req, res, next)
         case url.includes('/get'): return read_product_access(req, res, next)
+        case url.includes('/search'): return read_product_access(req, res, next)
+        case url.includes('/delete'): return delete_product_access(req, res, next)
 
         default: return next()
     }

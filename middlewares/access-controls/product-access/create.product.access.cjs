@@ -1,7 +1,7 @@
 const { LogicError, HTTPUtils } = require("../../../utils")
 
 const only_admin_with_add_access_or_superadmin_can_add_product = ({ loggedInUser }) => {
-    if (!loggedInUser.issuperadmin && !(loggedInUser.isadmin && !loggedInUser.adminaccess?.canCreate)) throw new LogicError(403, "You are not allowed to add product")
+    if (!loggedInUser.issuperadmin && (!loggedInUser.isadmin || !loggedInUser.adminaccess?.canCreate)) throw new LogicError({ status: 403, message: "You are not allowed to add product" })
 }
 
 const create_product_access = (req, res, next) => {

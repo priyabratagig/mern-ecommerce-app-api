@@ -116,6 +116,8 @@ UserSchema.static('updateUser', async function (userid, attrs) {
         if (attrs.hasOwnProperty(attr)) userInfo[attr] = attrs[attr]
     })
 
+    userInfo.updatedAt = new Date().toISOString()
+
     //prevalidate
     if (userInfo.issuperadmin) {
         userInfo.isadmin = true

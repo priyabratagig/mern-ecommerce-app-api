@@ -1,7 +1,7 @@
 const { LogicError, HTTPUtils, ProductUtils } = require("../../../utils")
 
 const only_admin_with_update_access_or_superadmin_can_add_product = ({ loggedInUser }) => {
-    if (!loggedInUser.issuperadmin && !(loggedInUser.isadmin && !loggedInUser.adminaccess?.canUpdate)) throw new LogicError(403, "You are not allowed to update product")
+    if (!loggedInUser.issuperadmin && (!loggedInUser.isadmin || !loggedInUser.adminaccess?.canUpdate)) throw new LogicError({ status: 403, message: "You are not allowed to update product" })
 }
 
 const update_product_access = async (req, res, next) => {
@@ -9,13 +9,13 @@ const update_product_access = async (req, res, next) => {
     try {
         const args = {
             loggedInUser: req.loggedinuser,
-            params: req.boby
+            productid: req.body.productid,
         }
 
         only_admin_with_update_access_or_superadmin_can_add_product(args)
         const products = await ProductUtils.products_exists(args)
 
-        req.boby.products = products._doc
+        req.body.products = products
 
         return next()
     }

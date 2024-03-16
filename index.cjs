@@ -17,14 +17,14 @@ const product = require('./controlers/product.controller.cjs')
 
 const app = express()
 app.use(cookie_parser(process.env.COOKIE_SECRET, { httpOnly: true, secure: true, signed: true }))
-app.use(express.json())
+app.use(express.json({ limit: '10mb' }))
 app.use(print_route)
 app.use(HTTPS_secure)
 app.use(authenticate)
 app.use(access_controls)
 app.use(`/api/${API_VERSION}/auth`, auth)
 app.use(`/api/${API_VERSION}/user`, user)
-app.use(`/api/${API_VERSION}/product`, product)
+app.use(`/api/${API_VERSION}/products`, product)
 
 try {
     const sslServer = https.createServer({

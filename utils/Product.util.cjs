@@ -3,60 +3,72 @@ const LogicError = require("./LogicError.cjs")
 
 class ProductUtils {
 
-    static async product_variant_exists({ params }) {
-        const { productid, productname } = params
-        if (!productid || !productname) throw new LogicError(404, "Prodcut not found")
+    static async product_variant_exists({ params: { productid, productname } }) {
+        if (!productid || !productname) throw new LogicError({ status: 404, message: "Producutid and productname is required" })
 
-        const products = await Product.findOne({ _id: productid })
+        const products = await Product.findOne({ _id: productid }).then(products => products?.toJSON())
+        if (!products) throw new LogicError({ status: 404, message: "Product not found" })
+
+        const variant = products.variants.find(variant => variant.name === productname)
+        if (!variant) throw new LogicError({ status: 404, message: "Product not found" })
 
         const variants = products.variants.map(variant => {
-            return variant.name === productname ? variant : { color: variant.color }
+            return variant.name === productname ? variant : { color: variant.color, name: variant.name }
         })
-
-        const { __v, ...productsInfo } = products._doc
+        const { _id, __v, ...productsInfo } = products
+        productsInfo._id = String(_id)
 
         return { ...productsInfo, variants }
     }
 
-    static async products_exists({ params }) {
-        const { productid } = params
-        if (!productid) throw new LogicError(404, "productid is required")
+    static async products_exists({ productid }) {
+        if (!productid) throw new LogicError({ status: 404, message: "productid is required" })
 
-        const products = await Product.findOne({ _id: productid })
+        const products = await Product.findOne({ _id: productid }).then(products => products?.toJSON())
+        if (!products) throw new LogicError({ status: 404, message: "Product not found" })
 
-        const { __v, ...productsInfo } = products._doc
+        const { _id, __v, ...productsInfo } = products
+        productsInfo._id = String(_id)
 
         return productsInfo
     }
 
-    static all_product_attritibutes_provided({ title, description, category, variants }) {
+    static all_product_attritibutes_provided({ title, desc, categories, variants }) {
         if (!title) throw new LogicError({ status: 400, message: "Missing or invalid title" })
-        if (!description) throw new LogicError({ status: 400, message: "Missing or invalid description" })
-        if (!category || !category.length) throw new LogicError({ status: 400, message: "Missing or invalid category" })
-        if (!variants || !variants.length) throw new LogicError({ status: 400, message: "Missing or invalid variants" })
+        if (!desc) throw new LogicError({ status: 400, message: "Missing or invalid desc" })
+        if (!categories) throw new LogicError({ status: 400, message: "Missing categories" })
+        if (!categories.length) throw new LogicError({ status: 400, message: "At least one category is required" })
+        if (!variants) throw new LogicError({ status: 400, message: "Missing variants" })
+        if (!variants.length) throw new LogicError({ status: 400, message: "At least one variant is required" })
         variants.forEach(variant => {
             if (!variant.name) throw new LogicError({ status: 400, message: "Missing or invalid variant name" })
-            if (!variant.img || Buffer.isBuffer(variant.img)) throw new LogicError({ status: 400, message: "Missing or invalid variant image" })
+            // if (!variant.img || Buffer.isBuffer(variant.img)) throw new LogicError({ status: 400, message: "Missing or invalid variant img" })
             if (!variant.color) throw new LogicError({ status: 400, message: "Missing or invalid variant color" })
-            if (!variant.size) throw new LogicError({ status: 400, message: "Missing or invalid variant size" })
-            if (!variant.available) throw new LogicError({ status: 400, message: "Missing or invalid variant availability" })
+            if (!variant.stocks) throw new LogicError({ status: 400, message: "Missing stocks" })
+            if (!variant.stocks.length) throw new LogicError({ status: 400, message: "At least one size is required" })
             if (!variant.price) throw new LogicError({ status: 400, message: "Missing or invalid variant price" })
+
+            variant.stocks.forEach(size => {
+                if (!size.size) throw new LogicError({ status: 400, message: "Missing or invalid size" })
+                if (!size.hasOwnProperty('available')) throw new LogicError({ status: 400, message: "Missing or invalid available" })
+            })
         })
     }
 
-    static build_products_attrs({ title, description, category, variants }) {
+    static build_products_attrs({ title, desc, categories, variants }) {
+        ProductUtils.all_product_attritibutes_provided({ title, desc, categories, variants })
+
         const variantsAttrs = variants.map(variant => {
             return {
                 name: variant.name,
                 img: variant.img,
                 color: variant.color,
-                size: variant.size,
-                available: variant.available,
+                stocks: variant.stocks,
                 price: variant.price
             }
         })
 
-        return { title, description, category, variants: variantsAttrs }
+        return { title, desc, categories, variants: variantsAttrs }
     }
 }
 
