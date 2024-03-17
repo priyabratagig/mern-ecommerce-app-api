@@ -55,6 +55,8 @@ const ProductSchema = new mongoose.Schema({
     timestamps: true
 })
 
+ProductSchema.index({ title: 'text', desc: 'text' }, { weights: { title: 5, desc: 1 }, name: 'title_desc' })
+
 ProductVariantsSchema.path('img').validate(function (value) {
     const base64Regex = /^data:image\/.+;base64,/
     if (!base64Regex.test(value)) return false
@@ -329,7 +331,7 @@ ProductSchema.post(['save', 'findOneAndUpdate'], function (error, doc, next) {
     }
     if (error.name = 'CastError') {
         const constructMessage = (error, path) => {
-            if (error.reason.name === 'AssertionError') return `'${error.value}' is not valid as ${error.path}`
+            if (error.reason?.name === 'AssertionError') return `'${error.value}' is not valid as ${error.path}`
             if (error.reason) return constructMessage(error.reason, error.path)
             return `'${error.value}' is not valid as ${path}`
         }

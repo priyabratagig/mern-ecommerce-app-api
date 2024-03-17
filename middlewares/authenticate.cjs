@@ -17,7 +17,8 @@ const AUTHENTICATION_IGNORED_ROUTES = [
     /\/products\/get\/[A-za-z0-9]+\/[A-za-z0-9]+/,
     /\/products\/get-by-categories\/[A-za-z\+]+/,
     /\/products\/get-all/,
-    /\/products\/search/
+    /\/products\/search/,
+    /\/cart\//
 ]
 
 const authenticate = async (req, res, next) => {

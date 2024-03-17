@@ -155,8 +155,8 @@ class UserUtils {
     }
 
     set_req_user(user) {
-        const { _id, __v, createdAt, updatedAt, ...userInfo } = user._doc
-        this.req.body.userid = String(user._id)
+        const { _id, __v, createdAt, updatedAt, ...userInfo } = user._doc ? user._doc : user
+        this.req.body.userid = String(user._id || user.userid)
         this.req.body.user = userInfo
 
         return this.req

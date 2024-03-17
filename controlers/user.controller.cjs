@@ -1,6 +1,8 @@
 const router = require("express").Router()
 const User = require("../models/User.model.cjs")
+const Cart = require("../models/Cart.model.cjs")
 const { LogicError, UserUtils, HTTPUtils } = require("../utils")
+const { ObjectId } = require("mongodb")
 
 //UPDATE
 const password_update = ({ req, userUtils }) => {
@@ -88,7 +90,8 @@ router.delete("/delete", async (req, res) => {
         all_delete_values_must_be_present(args)
         username_email_should_match(args)
 
-        await User.findByIdAndDelete(userid)
+        await User.findByIdAndDelete(ObjectId.createFromHexString(String(userid)))
+        await Cart.deleteMany({ userid: { $eq: ObjectId.createFromHexString(String(userid)) } })
 
         if (loggedInUser.userid === userid) userUtils.delete_access_token()
 
