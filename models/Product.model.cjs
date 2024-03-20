@@ -317,7 +317,7 @@ ProductSchema.post('update', async function (error, doc, next) {
 })
 
 ProductSchema.post(['save', 'findOneAndUpdate'], function (error, doc, next) {
-    if (error.name === 'ValidationError') {
+    if (error.name == 'ValidationError') {
         Object.keys(error.errors).forEach(key => {
             if (['Number', 'Boolean', 'enum'].includes(error.errors[key].kind)) error.errors[key].message = `'${error.errors[key].value}' is not vaid as ${error.errors[key].path}`
         })
@@ -325,11 +325,11 @@ ProductSchema.post(['save', 'findOneAndUpdate'], function (error, doc, next) {
         error.message = Object.values(error.errors).map(path => path.message).join('\n')
         return next(error)
     }
-    if (error.codeName === 'DuplicateKey') {
+    if (error.code == '11000') {
         error.message = `${Object.keys(error.keyPattern).join(', ')} already exists`
         return next(error)
     }
-    if (error.name = 'CastError') {
+    if (error.name == 'CastError') {
         const constructMessage = (error, path) => {
             if (error.reason?.name === 'AssertionError') return `'${error.value}' is not valid as ${error.path}`
             if (error.reason) return constructMessage(error.reason, error.path)
@@ -338,7 +338,7 @@ ProductSchema.post(['save', 'findOneAndUpdate'], function (error, doc, next) {
         error.message = constructMessage(error)
         return next(error)
     }
-    return next()
+    return next(error)
 })
 
 ProductSchema.plugin(uniqueValidator, { message: '{PATH} already exists.' })

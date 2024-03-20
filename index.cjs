@@ -15,6 +15,7 @@ const auth = require('./controlers/auth.controller.cjs')
 const user = require('./controlers/user.controller.cjs')
 const product = require('./controlers/product.controller.cjs')
 const cart = require('./controlers/cart.controller.cjs')
+const order = require('./controlers/order.controller.cjs')
 
 const app = express()
 app.use(cookie_parser(process.env.COOKIE_SECRET, { httpOnly: true, secure: true, signed: true }))
@@ -27,6 +28,7 @@ app.use(`/api/${API_VERSION}/auth`, auth)
 app.use(`/api/${API_VERSION}/user`, user)
 app.use(`/api/${API_VERSION}/products`, product)
 app.use(`/api/${API_VERSION}/cart`, cart)
+app.use(`/api/${API_VERSION}/order`, order)
 
 try {
     const sslServer = https.createServer({

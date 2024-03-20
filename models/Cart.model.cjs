@@ -31,7 +31,7 @@ CartSchema.static("getCart", async function (userid, localCart) {
             cart = await CartModle.create({ userid: userid })
             return cart
         })
-        const { _id, __v, createdAt, ...cartInfodb } = cart.toJSON()
+        const { __v, createdAt, ...cartInfodb } = cart.toObject()
 
         cartInfo = cartInfodb
     }
@@ -81,7 +81,7 @@ CartSchema.static("getCart", async function (userid, localCart) {
                         name: "$variants.name",
                         img: "$variants.img",
                         color: "$variants.color",
-                        stcock: {
+                        stock: {
                             size: "$variants.stocks.size",
                             available: "$variants.stocks.available"
                         },
@@ -92,7 +92,7 @@ CartSchema.static("getCart", async function (userid, localCart) {
             }
         ])
 
-        if (new_products.length === 0) new_products[0] = { title: "Product not available", variant: { name: "", img: "", color: "", stcock: { size: "", available: 0 }, price: 0 } }
+        if (new_products.length === 0) new_products[0] = { title: "Product not available", variant: { name: "", img: "", color: "", stock: { size: "", available: 0 }, price: 0 } }
 
         cartInfo.products[idx] = new_products[0]
     }
@@ -170,7 +170,7 @@ CartSchema.static('updateCart', async function (userid, products) {
         return cart
     })
 
-    return newCart.toJSON()
+    return newCart.toObject()
 })
 
 CartSchema.static('addCart', async function (userid, product, localCart) {
@@ -246,7 +246,7 @@ CartSchema.static('addCart', async function (userid, product, localCart) {
     else cartInfo.products = [...cartInfo.products, { ...new_products[0], productid: mongoose.Types.ObjectId.createFromHexString(productid) }]
 
     const newCart = new CartModel({ userid, ...cartInfo })
-    const { _id: _id_, __v: __, userid: ___, createdAt: ____, updatedAt, ...newCartInfo } = newCart.toJSON()
+    const { _id: _id_, __v: __, userid: ___, createdAt: ____, updatedAt, ...newCartInfo } = newCart.toObject()
 
     if (!userid || !mongoose.Types.ObjectId.isValid(userid)) return newCartInfo
 
@@ -258,11 +258,11 @@ CartSchema.static('addCart', async function (userid, product, localCart) {
         return cart
     })
 
-    return newcart.toJSON()
+    return newcart.toObject()
 })
 
 CartSchema.post(['save', 'findOneAndUpdate'], function (error, doc, next) {
-    if (error.name === 'ValidationError') {
+    if (error.name == 'ValidationError') {
         Object.keys(error.errors).forEach(key => {
             if (['Number', 'Boolean', 'enum'].includes(error.errors[key].kind)) error.errors[key].message = `'${error.errors[key].value}' is not vaid as ${error.errors[key].path}`
         })
@@ -270,11 +270,11 @@ CartSchema.post(['save', 'findOneAndUpdate'], function (error, doc, next) {
         error.message = Object.values(error.errors).map(path => path.message).join('\n')
         return next(error)
     }
-    if (error.codeName === 'DuplicateKey') {
+    if (error.code == '11000') {
         error.message = `${Object.keys(error.keyPattern).join(', ')} already exists`
         return next(error)
     }
-    if (error.name = 'CastError') {
+    if (error.name == 'CastError') {
         const constructMessage = (error, path) => {
             if (error.reason?.name === 'AssertionError') return `'${error.value}' is not valid as ${error.path}`
             if (error.reason) return constructMessage(error.reason, error.path)
@@ -283,7 +283,7 @@ CartSchema.post(['save', 'findOneAndUpdate'], function (error, doc, next) {
         error.message = constructMessage(error)
         return next(error)
     }
-    return next()
+    return next(error)
 })
 
 CartSchema.plugin(uniqueValidator, { message: '{PATH} already exists.' })

@@ -6,7 +6,7 @@ class ProductUtils {
     static async product_variant_exists({ params: { productid, productname } }) {
         if (!productid || !productname) throw new LogicError({ status: 404, message: "Producutid and productname is required" })
 
-        const products = await Product.findOne({ _id: productid }).then(products => products?.toJSON())
+        const products = await Product.findOne({ _id: productid }).then(products => products?.toObject())
         if (!products) throw new LogicError({ status: 404, message: "Product not found" })
 
         const variant = products.variants.find(variant => variant.name === productname)
@@ -24,7 +24,7 @@ class ProductUtils {
     static async products_exists({ productid }) {
         if (!productid) throw new LogicError({ status: 404, message: "productid is required" })
 
-        const products = await Product.findOne({ _id: productid }).then(products => products?.toJSON())
+        const products = await Product.findOne({ _id: productid }).then(products => products?.toObject())
         if (!products) throw new LogicError({ status: 404, message: "Product not found" })
 
         const { _id, __v, ...productsInfo } = products

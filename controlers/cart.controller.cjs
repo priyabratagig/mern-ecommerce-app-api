@@ -14,6 +14,7 @@ router.get("/getcart", async (req, res) => {
         const { _id, __v, createdAt, ...cartInfo } = cart
 
         cartInfo.userid = cartInfo.userid && UserUtils.id_encrypt(cartInfo.userid)
+        cartInfo.cartid = cartInfo.userid && _id
 
         if (loggedinUser?.userid) cartUtils.delete_from_cookies()
 
@@ -37,8 +38,10 @@ router.post("/update", async (req, res) => {
         const localCart = cartUtils.get_from_cookies()
 
         const updatedCart = await Cart.updateCart(loggedinUser?.userid, products, localCart)
-        updatedCart.userid = UserUtils.id_encrypt(updatedCart.userid)
+
         const { _id, __v, createdAt, ...cartInfo } = updatedCart
+        cartInfo.userid = cartInfo.userid && UserUtils.id_encrypt(cartInfo.userid)
+        cartInfo.cartid = cartInfo.userid && _id
 
         if (loggedinUser?.userid) cartUtils.delete_from_cookies()
         else cartUtils.set_to_cookies(cartInfo)
@@ -57,14 +60,16 @@ router.put("/add", async (req, res) => {
     const httpUtils = new HTTPUtils(req, res)
     const cartUtils = new CartUtils(req, res)
     try {
-        CartUtils.all_cart_attritibutes_provided({ products: [req.body.product] })
         const product = req.body.product
         const loggedinUser = req.loggedinuser
         const localCart = cartUtils.get_from_cookies()
+        CartUtils.all_cart_attritibutes_provided({ products: [product] })
 
         const updatedCart = await Cart.addCart(loggedinUser?.userid, product, localCart)
-        updatedCart.userid = UserUtils.id_encrypt(updatedCart.userid)
+
         const { _id, __v, createdAt, ...cartInfo } = updatedCart
+        cartInfo.userid = cartInfo.userid && UserUtils.id_encrypt(cartInfo.userid)
+        cartInfo.cartid = cartInfo.userid && _id
 
         if (loggedinUser?.userid) cartUtils.delete_from_cookies()
         else cartUtils.set_to_cookies(cartInfo)
@@ -77,6 +82,5 @@ router.put("/add", async (req, res) => {
         return httpUtils.send_message(500, err.message)
     }
 })
-
 
 module.exports = router
